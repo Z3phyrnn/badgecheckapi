@@ -43,7 +43,8 @@ def webhook():
     if not data:
         return jsonify({"error": "No data received"}), 400
 
-    app.logger.info(f"Webhook data received: {data}")
+    app.logger.info(f"Webhook data received: {data}")  # Log the received data for debugging
+    
     username = data.get("username")
     if username:
         try:
