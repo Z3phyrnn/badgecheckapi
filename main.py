@@ -3,9 +3,15 @@ import badge_script  # Your actual badge code
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def home():
-    app.logger.info("Home route accessed")
+    if request.method == 'POST':
+        # This allows Zapier to POST to the root route without triggering 405 errors
+        data = request.json
+        app.logger.info(f"POST to '/' received. Data: {data}")
+        return jsonify({"status": "success", "message": "POST received at root"}), 200
+    # GET method
+    app.logger.info("Home route accessed via GET")
     return jsonify({"message": "Welcome to BadgeCheck API"}), 200
 
 @app.route('/run-badge-script', methods=['POST'])
@@ -24,22 +30,18 @@ def run_badge_script():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# Webhook route to handle incoming data from external sources (e.g., Zapier)
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    data = request.json  # Assuming you're sending JSON data
+    data = request.json
     if not data:
         return jsonify({"error": "No data received"}), 400
 
-    # Log the received data
     app.logger.info(f"Webhook data received: {data}")
 
-    # You can add further processing logic for the incoming data here
-    # For example, you can call the badge script with data from the webhook
     username = data.get("username")
     if username:
         try:
-            badge_path = badge_script.generate_badge_graph(username)  # Generate badge for username from webhook
+            badge_path = badge_script.generate_badge_graph(username)
             return send_file(badge_path, mimetype='image/png', as_attachment=True, download_name=f"{username}_badge.png")
         except Exception as e:
             return jsonify({"status": "error", "message": str(e)}), 500
@@ -47,4 +49,4 @@ def webhook():
         return jsonify({"error": "Username is required in the webhook data"}), 400
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=10000, debug=True)  # Added debug mode for better logging
+    app.run(host='0.0.0.0', port=10000, debug=True)
