@@ -43,18 +43,20 @@ def webhook():
     if not data:
         return jsonify({"error": "No data received"}), 400
 
-    app.logger.info(f"Webhook data received: {data}")  # Log the received data for debugging
+    app.logger.info(f"Webhook data received: {data}")
     
+    # Ensure that 'username' is present in the webhook data
     username = data.get("username")
-    if username:
-        try:
-            badge_path = badge_script.generate_badge_graph(username)
-            return send_file(badge_path, mimetype='image/png', as_attachment=True, download_name=f"{username}_badge.png")
-        except Exception as e:
-            app.logger.error(f"Webhook error for {username}: {e}")
-            return jsonify({"status": "error", "message": str(e)}), 500
-    else:
+    if not username:
+        app.logger.error("Username is required in the webhook data")
         return jsonify({"error": "Username is required in the webhook data"}), 400
+    
+    try:
+        badge_path = badge_script.generate_badge_graph(username)
+        return send_file(badge_path, mimetype='image/png', as_attachment=True, download_name=f"{username}_badge.png")
+    except Exception as e:
+        app.logger.error(f"Webhook error for {username}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000, debug=True)
