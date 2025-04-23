@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import badge_script  # Your actual badge code
 
 app = Flask(__name__)
@@ -15,25 +15,36 @@ def run_badge_script():
         return jsonify({"error": "Username is required"}), 400
 
     try:
-        badge_script.process_user(username)
-        return jsonify({"status": "success", "message": f"Badge graph generated for {username}"}), 200
+        # Generate the badge graph
+        badge_path = badge_script.generate_badge_graph(username)  # Update to use generate_badge_graph
+        
+        # Return the generated badge as a file
+        return send_file(badge_path, mimetype='image/png', as_attachment=True, download_name=f"{username}_badge.png")
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# Add the new webhook route here
-@app.route('/', methods=['POST'])
+# Webhook route to handle incoming data from external sources (e.g., Zapier)
+@app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.json  # Assuming you're sending JSON data
     if not data:
         return jsonify({"error": "No data received"}), 400
 
-    # Log or process the incoming data
+    # Log the received data
     app.logger.info(f"Webhook data received: {data}")
 
     # You can add further processing logic for the incoming data here
     # For example, you can call the badge script with data from the webhook
-
-    return jsonify({"status": "success", "message": "Webhook received"}), 200
+    username = data.get("username")
+    if username:
+        try:
+            badge_path = badge_script.generate_badge_graph(username)  # Generate badge for username from webhook
+            return send_file(badge_path, mimetype='image/png', as_attachment=True, download_name=f"{username}_badge.png")
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)}), 500
+    else:
+        return jsonify({"error": "Username is required in the webhook data"}), 400
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=10000, debug=True)  # Added debug mode for better logging
