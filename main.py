@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, send_file
-import badge_script  # Ensure this has the new generate_badge_graph function
+import badge_script  # Ensure this has the generate_badge_graph function
 
 app = Flask(__name__)
 
@@ -8,7 +8,19 @@ def home():
     if request.method == 'POST':
         data = request.json
         app.logger.info(f"POST to '/' received. Data: {data}")
-        return jsonify({"status": "success", "message": "POST received at root"}), 200
+
+        username = data.get("username")
+        if not username:
+            return jsonify({"error": "Username is required"}), 400
+
+        try:
+            badge_path = badge_script.generate_badge_graph(username)
+            return send_file(badge_path, mimetype='image/png', as_attachment=True, download_name=f"{username}_badge.png")
+        except Exception as e:
+            app.logger.error(f"Error generating badge graph for {username}: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    # GET method
     app.logger.info("Home route accessed via GET")
     return jsonify({"message": "Welcome to BadgeCheck API"}), 200
 
